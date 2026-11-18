@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0b0d12">
+<title>Maják – světlo a barvy</title>
+<style>
+  :root{--bg:#0b0d12;--card:#161a22;--line:#262c38;--txt:#e9edf3;--mut:#8b93a3;--acc:#ffb020;--acc2:#3b82f6;--ok:#22c55e;--bad:#ef4444}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  main{max-width:560px;margin:0 auto;padding:14px 14px 40px}
+  h1{font-size:22px;margin:4px 0 12px;display:flex;align-items:center;gap:10px}
+  h1 svg{flex:none}
+  .tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--card);padding:5px;border-radius:14px;margin-bottom:14px}
+  .tabs button{border:0;background:transparent;color:var(--mut);padding:11px;border-radius:10px;font-size:15px;font-weight:600}
+  .tabs button.on{background:var(--line);color:var(--txt)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 10px;font-weight:600}
+  .seg{display:flex;flex-wrap:wrap;gap:6px}
+  .seg button{flex:1 1 auto;min-width:70px;border:1px solid var(--line);background:#0f1218;color:var(--txt);padding:10px 8px;border-radius:10px;font-size:14px}
+  .seg button.on{border-color:var(--acc);background:#2a2010;color:#ffd27a}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 4px;font-size:14px}
+  .row b{font-variant-numeric:tabular-nums;color:var(--acc)}
+  input[type=range]{width:100%;accent-color:var(--acc);height:28px}
+  .big{width:100%;border:0;border-radius:16px;padding:18px;font-size:18px;font-weight:700;color:#111;background:var(--acc)}
+  .big.off{background:var(--line);color:var(--txt)}
+  .note{font-size:13px;color:var(--mut);margin:8px 0 0}
+  .warn{font-size:13px;color:#fbbf24;background:#2a2108;border:1px solid #5a4510;border-radius:10px;padding:8px 10px;margin-top:10px;display:none}
+  .status{font-size:13px;padding:8px 10px;border-radius:10px;background:#0f1218;margin-bottom:10px;color:var(--mut)}
+  .status.ok{color:#86efac}.status.bad{color:#fca5a5}
+  .bulb{width:84px;height:84px;border-radius:50%;margin:6px auto 14px;background:#222833;border:2px solid var(--line);transition:background .05s,box-shadow .05s}
+  .bulb.lit{background:#fff6d6;box-shadow:0 0 40px 10px rgba(255,214,120,.55)}
+  .cells{display:grid;gap:8px;grid-template-columns:repeat(4,1fr)}
+  .cell{position:relative;border-radius:12px;aspect-ratio:1;border:2px solid var(--line);overflow:hidden}
+  .cell.sel{border-color:#fff}
+  .cell.hidden{opacity:.25}
+  .cell span{position:absolute;left:6px;top:4px;font-size:12px;font-weight:700;color:#000;mix-blend-mode:difference;filter:invert(1)}
+  .sw{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:10px}
+  .sw button{aspect-ratio:1;border-radius:50%;border:2px solid #0006}
+  .picker{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:14px}
+  .picker input{width:52px;height:38px;border:0;background:none;padding:0}
+  .preview{height:110px;border-radius:14px;overflow:hidden;display:grid;border:1px solid var(--line);margin-bottom:12px;position:relative}
+  /* full-screen stage */
+  #stage{position:fixed;inset:0;display:none;z-index:50;background:#000;touch-action:none}
+  #stage.show{display:grid}
+  #dim{position:fixed;inset:0;background:#000;pointer-events:none;z-index:51;display:none}
+  #panel{position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:52;background:rgba(15,18,24,.92);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:none;color:var(--txt)}
+  #panel.show{display:block}
+  #panel .top{display:flex;gap:8px}
+  #panel .top button{flex:1;border:0;border-radius:10px;padding:12px;font-weight:700;font-size:15px}
+  #hint{position:fixed;left:0;right:0;top:max(14px,env(safe-area-inset-top));text-align:center;z-index:52;font-size:13px;color:#fff;text-shadow:0 0 4px #000;pointer-events:none;transition:opacity 1s}
+  #epi{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:60;display:none;align-items:center;justify-content:center;padding:20px}
+  #epi.show{display:flex}
+  #epi div{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;max-width:420px}
+  #epi p{margin:0 0 14px;font-size:15px}
+</style>
+</head>
+<body>
+<main>
+  <h1>
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffb020" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21h6M10 21l1-12h2l1 12M9 9h6l-1-3h-4zM12 3v1M5 6l2 1M19 6l-2 1"/></svg>
+    Maják
+  </h1>
+
+  <div class="tabs">
+    <button id="tabT" class="on">🔦 Svítilna</button>
+    <button id="tabS">🎨 Displej</button>
+  </div>
+
+  <!-- ============ SVÍTILNA ============ -->
+  <section id="secT">
+    <div id="tStatus" class="status">Svítilna se zapne po prvním stisknutí tlačítka (prohlížeč si vyžádá přístup ke kameře – kvůli bleskové LED).</div>
+    <div class="bulb" id="bulb"></div>
+    <button class="big off" id="tBtn">Zapnout svítilnu</button>
+
+    <div class="card" style="margin-top:12px">
+      <h2>Režim</h2>
+      <div class="seg" id="tMode">
+        <button data-v="steady" class="on">Stálé</button>
+        <button data-v="blink">Blikání</button>
+        <button data-v="strobe">Stroboskop</button>
+        <button data-v="sos">SOS</button>
+      </div>
+      <div id="tFreqBox">
+        <div class="row"><span>Frekvence</span><b id="tFreqV">2 Hz</b></div>
+        <input type="range" id="tFreq" min="0.2" max="15" step="0.1" value="2">
+        <div class="row"><span>Střída (podíl svitu)</span><b id="tDutyV">50 %</b></div>
+        <input type="range" id="tDuty" min="5" max="95" step="5" value="50">
+      </div>
+      <div class="warn" id="tWarn">⚠️ Rychlé blikání (nad 3 Hz) může u citlivých lidí vyvolat epileptický záchvat.</div>
+    </div>
+
+    <div class="card">
+      <h2>Intenzita</h2>
+      <div id="tIntBox">
+        <div class="row"><span>Síla světla</span><b id="tIntV">—</b></div>
+        <input type="range" id="tInt" min="1" max="100" step="1" value="100" disabled>
+      </div>
+      <p class="note" id="tIntNote">Prohlížeč zatím neumí měnit sílu LED – jde jen zapnout/vypnout. Plynulou intenzitu zvládne až nativní aplikace pro Android 13+.</p>
+    </div>
+  </section>
+
+  <!-- ============ DISPLEJ ============ -->
+  <section id="secS" style="display:none">
+    <div class="preview" id="prev"></div>
+
+    <div class="card">
+      <h2>Rozdělení plochy</h2>
+      <div class="seg" id="sLayout">
+        <button data-v="1" class="on">Celá</button>
+        <button data-v="2v">2 ↕</button>
+        <button data-v="2h">2 ↔</button>
+        <button data-v="4">4 pole</button>
+      </div>
+      <p class="note">Klepni na pole a vyber mu barvu:</p>
+      <div class="cells" id="cells"></div>
+      <div class="sw" id="sw"></div>
+      <div class="picker"><input type="color" id="pick" value="#ff0000"><span>Vlastní barva</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Efekt</h2>
+      <div class="seg" id="sMode">
+        <button data-v="solid" class="on">Stálé</button>
+        <button data-v="blink">Blikání</button>
+        <button data-v="swap">Prohazování</button>
+        <button data-v="cycle">Střídání barev</button>
+        <button data-v="fade">Plynulé</button>
+        <button data-v="rainbow">Duha</button>
+      </div>
+      <div id="sFreqBox" style="display:none">
+        <div class="row"><span>Frekvence</span><b id="sFreqV">1 Hz</b></div>
+        <input type="range" id="sFreq" min="0.1" max="15" step="0.1" value="1">
+        <div id="sDutyBox">
+          <div class="row"><span>Střída (podíl svitu)</span><b id="sDutyV">50 %</b></div>
+          <input type="range" id="sDuty" min="5" max="95" step="5" value="50">
+        </div>
+      </div>
+      <div class="warn" id="sWarn">⚠️ Rychlé blikání (nad 3 Hz) může u citlivých lidí vyvolat epileptický záchvat.</div>
+    </div>
+
+    <div class="card">
+      <h2>Jas</h2>
+      <div class="row"><span>Jas barev</span><b id="sBriV">100 %</b></div>
+      <input type="range" id="sBri" min="1" max="100" step="1" value="100">
+      <p class="note">Pro nejsilnější světlo nastav i jas telefonu na maximum – webová stránka systémový jas měnit nemůže.</p>
+    </div>
+
+    <div class="card">
+      <h2>Spojit se svítilnou</h2>
+      <div class="seg" id="sSync">
+        <button data-v="0" class="on">Ne</button>
+        <button data-v="1">Svítilna bliká s displejem</button>
+      </div>
+    </div>
+
+    <button class="big" id="sGo">▶ Spustit na celou obrazovku</button>
+  </section>
+</main>
+
+<div id="stage"></div>
+<div id="dim"></div>
+<div id="hint">Klepnutím zobrazíš ovládání</div>
+<div id="panel">
+  <div class="row" style="margin-top:0"><span>Jas</span><b id="pBriV"></b></div>
+  <input type="range" id="pBri" min="1" max="100" step="1">
+  <div class="row"><span>Frekvence</span><b id="pFreqV"></b></div>
+  <input type="range" id="pFreq" min="0.1" max="15" step="0.1">
+  <div class="top" style="margin-top:10px">
+    <button id="pPause" style="background:var(--line);color:var(--txt)">⏸ Pauza</button>
+    <button id="pClose" style="background:var(--acc);color:#111">✕ Zavřít</button>
+  </div>
+</div>
+
+<div id="epi"><div>
+  <p>⚠️ <b>Upozornění:</b> Blikající světlo, zvlášť rychlejší než 3× za sekundu, může u lidí s fotosenzitivní epilepsií vyvolat záchvat. Nesviť nikomu blikáním do očí.</p>
+  <button class="big" id="epiOk">Rozumím</button>
+</div></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const store = {
+    get(k, d){ try{ const v = localStorage.getItem('majak_'+k); return v===null ? d : JSON.parse(v); }catch(e){ return d; } },
+    set(k, v){ try{ localStorage.setItem('majak_'+k, JSON.stringify(v)); }catch(e){} }
+  };
+  const segInit = (id, val, onChange) => {
+    const el = $(id);
+    const mark = v => el.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === String(v)));
+    mark(val);
+    el.addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; mark(b.dataset.v); onChange(b.dataset.v); });
+    return mark;
+  };
+  const fmtHz = f => (Math.round(f*10)/10).toString().replace('.', ',') + ' Hz';
+
+  // ---------- warning ----------
+  let epiShown = store.get('epi', false);
+  function maybeWarn(){ if(!epiShown){ $('epi').classList.add('show'); } }
+  $('epiOk').onclick = () => { epiShown = true; store.set('epi', true); $('epi').classList.remove('show'); };
+
+  // ---------- tabs ----------
+  function tab(t){
+    $('tabT').classList.toggle('on', t==='T'); $('tabS').classList.toggle('on', t==='S');
+    $('secT').style.display = t==='T' ? '' : 'none'; $('secS').style.display = t==='S' ? '' : 'none';
+    store.set('tab', t);
+  }
+  $('tabT').onclick = () => tab('T'); $('tabS').onclick = () => tab('S');
+  tab(store.get('tab','T'));
+
+  // ================= TORCH =================
+  const T = { mode: store.get('tMode','steady'), freq: store.get('tFreq',2), duty: store.get('tDuty',50), active:false, track:null, state:null, timer:null, ready:false, strength:null };
+  let torchBusy = false, torchWanted = false;
+
+  async function torchInit(){
+    if(T.ready) return true;
+    const st = $('tStatus');
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      st.className='status bad'; st.textContent='Tento prohlížeč neumožňuje přístup ke kameře/LED. Otevři aplikaci v Chrome na Androidu (přes https nebo jako soubor).'; return false;
+    }
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
+      const track = stream.getVideoTracks()[0];
+      // some phones need the stream actually playing
+      const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.srcObject = stream; v.style.cssText='position:fixed;width:1px;height:1px;opacity:0;pointer-events:none'; document.body.appendChild(v); v.play().catch(()=>{});
+      await new Promise(r => setTimeout(r, 300));
+      const caps = track.getCapabilities ? track.getCapabilities() : {};
+      if(!('torch' in caps) || caps.torch === false){
+        st.className='status bad'; st.textContent='Kamera je dostupná, ale prohlížeč nepovolil ovládat LED. Funguje v Chrome na Androidu; Safari na iPhonu svítilnu z webu ovládat neumí.';
+        track.stop(); return false;
+      }
+      T.track = track; T.ready = true;
+      // torch strength (zatím nestandardní, pro budoucí prohlížeče)
+      const s = caps.torchStrength || caps.torchLevel;
+      if(s && s.max){
+        T.strength = s; const r = $('tInt'); r.disabled = false; r.min = s.min || 1; r.max = s.max; r.step = s.step || 1; r.value = s.max;
+        $('tIntV').textContent = '100 %'; $('tIntNote').textContent = 'Tvůj prohlížeč podporuje řízení síly LED.';
+      }
+      st.className='status ok'; st.textContent='Svítilna připravena ✓';
+      return true;
+    }catch(e){
+      st.className='status bad';
+      st.textContent = (e && e.name==='NotAllowedError') ? 'Přístup ke kameře byl zamítnut. Povol ho v nastavení stránky (ikona zámku vedle adresy) a zkus to znovu.' : 'Nepodařilo se získat přístup k LED: ' + (e && e.message || e);
+      return false;
+    }
+  }
+  async function setTorch(on){
+    if(!T.track || T.state === on) return;
+    T.state = on;
+    $('bulb').classList.toggle('lit', on);
+    const c = {torch:on};
+    if(on && T.strength){ c.torchStrength = +$('tInt').value; }
+    try{ await T.track.applyConstraints({advanced:[c]}); }catch(e){}
+  }
+  function stopLoop(){ clearTimeout(T.timer); T.timer = null; }
+
+  // SOS: ... --- ...   (1 = jednotka svitu, 0 = jednotka tmy)
+  const SOS = [1,0,1,0,1,0,0,0, 1,1,1,0,1,1,1,0,1,1,1,0,0,0, 1,0,1,0,1,0,0,0,0,0,0,0];
+  function runLoop(){
+    stopLoop();
+    if(!T.active) { setTorch(false); return; }
+    if(T.mode === 'steady'){ setTorch(true); return; }
+    if(T.mode === 'sos'){
+      let i = 0; const unit = () => Math.max(60, 600 / T.freq);
+      const step = () => { if(!T.active || T.mode!=='sos') return; setTorch(!!SOS[i]); i = (i+1) % SOS.length; T.timer = setTimeout(step, unit()); };
+      step(); return;
+    }
+    const duty = T.mode === 'strobe' ? 0.15 : T.duty/100;
+    let on = false;
+    const step = () => {
+      if(!T.active) return;
+      on = !on; setTorch(on);
+      const period = 1000 / T.freq;
+      T.timer = setTimeout(step, Math.max(25, on ? period*duty : period*(1-duty)));
+    };
+    step();
+  }
+  async function torchToggle(){
+    if(torchBusy) return; torchBusy = true;
+    try{
+      if(!T.active){
+        if(!(await torchInit())) return;
+        if(T.mode!=='steady') maybeWarn();
+        T.active = true;
+      } else { T.active = false; }
+      $('tBtn').textContent = T.active ? 'Vypnout svítilnu' : 'Zapnout svítilnu';
+      $('tBtn').classList.toggle('off', !T.active);
+      runLoop();
+    } finally { torchBusy = false; }
+  }
+  $('tBtn').onclick = torchToggle;
+
+  function tUI(){
+    const blinking = T.mode==='blink' || T.mode==='strobe' || T.mode==='sos';
+    $('tFreqBox').style.display = blinking ? '' : 'none';
+    $('tDuty').parentElement; // keep
+    $('tDuty').style.display = $('tDutyV').parentElement.style.display = T.mode==='blink' ? '' : 'none';
+    $('tFreqV').textContent = T.mode==='sos' ? ('tempo ' + fmtHz(T.freq).replace(' Hz','×')) : fmtHz(T.freq);
+    $('tDutyV').textContent = T.duty + ' %';
+    $('tWarn').style.display = blinking && T.freq > 3 && T.mode!=='sos' ? 'block' : 'none';
+  }
+  segInit('tMode', T.mode, v => { T.mode = v; store.set('tMode', v); tUI(); if(T.active){ if(v!=='steady') maybeWarn(); runLoop(); } });
+  $('tFreq').value = T.freq; $('tDuty').value = T.duty;
+  $('tFreq').oninput = e => { T.freq = +e.target.value; store.set('tFreq', T.freq); tUI(); };
+  $('tDuty').oninput = e => { T.duty = +e.target.value; store.set('tDuty', T.duty); tUI(); };
+  $('tInt').oninput = e => {
+    if(!T.strength) return; const s=T.strength;
+    $('tIntV').textContent = Math.round((e.target.value - (s.min||0)) / (s.max - (s.min||0)) * 100) + ' %';
+    if(T.state){ T.state = null; setTorch(true); }
+  };
+  tUI();
+
+  // ================= SCREEN =================
+  const PRESETS = ['#ffffff','#ff0000','#00ff00','#0000ff','#ffff00','#ff00ff','#00ffff','#ff8000','#ff0080','#8000ff','#80ff00','#ffd8a0','#ff4040','#40a0ff','#202020','#000000'];
+  const S = {
+    layout: store.get('sLayout','1'), colors: store.get('sColors',['#ff0000','#0000ff','#00ff00','#ffff00']),
+    mode: store.get('sMode','solid'), freq: store.get('sFreq',1), duty: store.get('sDuty',50), bri: store.get('sBri',100),
+    sync: store.get('sSync','0'), sel: 0, running:false, paused:false, t0:0, pauseAt:0
+  };
+  const nCells = () => S.layout==='1' ? 1 : S.layout==='4' ? 4 : 2;
+
+  // swatches & cells
+  PRESETS.forEach(c => { const b = document.createElement('button'); b.style.background = c; b.onclick = () => setColor(c); $('sw').appendChild(b); });
+  function setColor(c){ S.colors[S.sel] = c; store.set('sColors', S.colors); $('pick').value = c; drawCells(); }
+  $('pick').oninput = e => setColor(e.target.value);
+  function drawCells(){
+    const box = $('cells'); box.innerHTML = '';
+    S.colors.forEach((c,i) => {
+      const d = document.createElement('div'); d.className = 'cell' + (i===S.sel?' sel':'') + (i>=nCells()?' hidden':'');
+      d.style.background = c; d.innerHTML = '<span>'+(i+1)+'</span>';
+      d.onclick = () => { if(i>=nCells()) return; S.sel = i; $('pick').value = c; drawCells(); };
+      box.appendChild(d);
+    });
+  }
+  segInit('sLayout', S.layout, v => { S.layout = v; store.set('sLayout', v); if(S.sel>=nCells()) S.sel=0; drawCells(); buildGrid($('prev')); buildGrid($('stage')); });
+  segInit('sMode', S.mode, v => { S.mode = v; store.set('sMode', v); sUI(); });
+  segInit('sSync', S.sync, v => { S.sync = v; store.set('sSync', v); });
+
+  function sUI(){
+    const anim = S.mode !== 'solid';
+    $('sFreqBox').style.display = anim ? '' : 'none';
+    $('sDutyBox').style.display = (S.mode==='blink' || S.mode==='swap') ? '' : 'none';
+    $('sFreqV').textContent = $('pFreqV').textContent = fmtHz(S.freq);
+    $('sDutyV').textContent = S.duty + ' %';
+    $('sBriV').textContent = $('pBriV').textContent = S.bri + ' %';
+    $('sWarn').style.display = (S.mode==='blink'||S.mode==='swap'||S.mode==='cycle') && S.freq > 3 ? 'block' : 'none';
+  }
+  $('sFreq').value = S.freq; $('sDuty').value = S.duty; $('sBri').value = S.bri;
+  const setFreq = f => { S.freq = f; store.set('sFreq', f); $('sFreq').value = f; $('pFreq').value = f; sUI(); };
+  const setBri = b => { S.bri = b; store.set('sBri', b); $('sBri').value = b; $('pBri').value = b; sUI(); };
+  $('sFreq').oninput = e => setFreq(+e.target.value);
+  $('pFreq').oninput = e => setFreq(+e.target.value);
+  $('sDuty').oninput = e => { S.duty = +e.target.value; store.set('sDuty', S.duty); sUI(); };
+  $('sBri').oninput = e => setBri(+e.target.value);
+  $('pBri').oninput = e => setBri(+e.target.value);
+
+  function buildGrid(el){
+    const n = nCells();
+    el.style.gridTemplateColumns = (S.layout==='2h'||S.layout==='4') ? '1fr 1fr' : '1fr';
+    el.style.gridTemplateRows = (S.layout==='2v'||S.layout==='4') ? '1fr 1fr' : '1fr';
+    el.innerHTML = ''; for(let i=0;i<n;i++){ const d=document.createElement('div'); el.appendChild(d); }
+    if(el.id==='prev'){ const dd=document.createElement('div'); dd.className='pdim'; dd.style.cssText='position:absolute;inset:0;background:#000;pointer-events:none'; el.appendChild(dd); }
+  }
+
+  // color helpers
+  const hex2rgb = h => { const n=parseInt(h.slice(1),16); return [n>>16&255, n>>8&255, n&255]; };
+  const mix = (a,b,t) => { const A=hex2rgb(a),B=hex2rgb(b); return 'rgb('+A.map((v,i)=>Math.round(v+(B[i]-v)*t)).join(',')+')'; };
+
+  // returns {colors:[...], lit:bool}
+  function frame(t){
+    const n = nCells(), cols = S.colors.slice(0, n), all = S.colors, ph = t*S.freq, frac = ph - Math.floor(ph), on = frac < S.duty/100;
+    switch(S.mode){
+      case 'solid': return {colors: cols, lit:true};
+      case 'blink': return {colors: on ? cols : cols.map(()=> '#000000'), lit:on};
+      case 'swap': {
+        if(n===1){ return {colors:[on ? all[0] : all[1]], lit:on}; }
+        return {colors: on ? cols : cols.map((_,i)=>cols[(i+1)%n]), lit:on};
+      }
+      case 'cycle': { const k = Math.floor(ph); return {colors: cols.map((_,i)=> all[(k+i)%4]), lit: k%2===0}; }
+      case 'fade': { const k=Math.floor(ph); return {colors: cols.map((_,i)=> mix(all[(k+i)%4], all[(k+i+1)%4], frac)), lit:true}; }
+      case 'rainbow': return {colors: cols.map((_,i)=> 'hsl('+(((ph+i/n)*360)%360)+',100%,50%)'), lit:true};
+    }
+  }
+  function paint(el, f){ const kids = el.children; for(let i=0;i<f.colors.length;i++){ if(kids[i]) kids[i].style.background = f.colors[i]; } }
+
+  // preview loop (always) + stage loop
+  let lastLit = null;
+  function loop(now){
+    const t = (S.paused ? S.pauseAt : now) / 1000;
+    const f = frame(t);
+    if(S.running){
+      paint($('stage'), f);
+      $('dim').style.opacity = 1 - S.bri/100;
+      if(S.sync==='1' && T.ready && f.lit !== lastLit){ lastLit = f.lit; setTorch(f.lit); }
+    } else if($('secS').style.display !== 'none'){
+      paint($('prev'), f);
+      const pd = $('prev').querySelector('.pdim'); if(pd) pd.style.opacity = 1 - S.bri/100;
+    }
+    requestAnimationFrame(loop);
+  }
+
+  // stage control
+  let wake = null, hideTimer = null;
+  async function startStage(){
+    if(S.mode!=='solid' && S.mode!=='fade' && S.mode!=='rainbow') maybeWarn();
+    if(S.sync==='1'){ if(T.active){ T.active=false; stopLoop(); $('tBtn').textContent='Zapnout svítilnu'; $('tBtn').classList.add('off'); } await torchInit(); lastLit = null; }
+    buildGrid($('stage'));
+    S.running = true; S.paused = false; $('pPause').textContent='⏸ Pauza';
+    $('stage').classList.add('show'); $('dim').style.display='block';
+    $('pBri').value = S.bri; $('pFreq').value = S.freq; sUI();
+    $('hint').style.opacity = 1; setTimeout(()=> $('hint').style.opacity = 0, 2500); $('hint').style.display='block';
+    try{ await document.documentElement.requestFullscreen({navigationUI:'hide'}); }catch(e){}
+    try{ wake = await navigator.wakeLock.request('screen'); }catch(e){}
+  }
+  function stopStage(){
+    S.running = false; $('stage').classList.remove('show'); $('dim').style.display='none'; $('panel').classList.remove('show'); $('hint').style.display='none';
+    if(S.sync==='1' && T.ready){ setTorch(false); }
+    try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
+    try{ wake && wake.release(); }catch(e){} wake = null;
+  }
+  $('sGo').onclick = startStage;
+  $('stage').addEventListener('click', () => {
+    const p = $('panel'); p.classList.toggle('show');
+    clearTimeout(hideTimer); if(p.classList.contains('show')) hideTimer = setTimeout(()=>p.classList.remove('show'), 6000);
+  });
+  $('panel').addEventListener('input', () => { clearTimeout(hideTimer); hideTimer = setTimeout(()=>$('panel').classList.remove('show'), 6000); });
+  $('pClose').onclick = stopStage;
+  $('pPause').onclick = () => {
+    if(S.paused){ const shift = performance.now() - S.pauseAt; S.paused=false; S.pauseAt=0; /* continue from now */ }
+    else { S.paused = true; S.pauseAt = performance.now(); }
+    $('pPause').textContent = S.paused ? '▶ Pokračovat' : '⏸ Pauza';
+  };
+  document.addEventListener('visibilitychange', async () => {
+    if(document.visibilityState==='visible' && S.running){ try{ wake = await navigator.wakeLock.request('screen'); }catch(e){} }
+  });
+
+  drawCells(); buildGrid($('prev')); sUI();
+  $('pick').value = S.colors[0];
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
