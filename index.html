@@ -91,7 +91,7 @@
       <div class="warn" id="tWarn">⚠️ Rychlé blikání (nad 3 Hz) může u citlivých lidí vyvolat epileptický záchvat.</div>
     </div>
 
-    <div class="card">
+    <div class="card" id="tIntCard" style="display:none">
       <h2>Intenzita</h2>
       <div id="tIntBox">
         <div class="row"><span>Síla světla</span><b id="tIntV">—</b></div>
@@ -233,7 +233,7 @@
       // torch strength (zatím nestandardní, pro budoucí prohlížeče)
       const s = caps.torchStrength || caps.torchLevel;
       if(s && s.max){
-        T.strength = s; const r = $('tInt'); r.disabled = false; r.min = s.min || 1; r.max = s.max; r.step = s.step || 1; r.value = s.max;
+        T.strength = s; $('tIntCard').style.display = ''; const r = $('tInt'); r.disabled = false; r.min = s.min || 1; r.max = s.max; r.step = s.step || 1; r.value = s.max;
         $('tIntV').textContent = '100 %'; $('tIntNote').textContent = 'Tvůj prohlížeč podporuje řízení síly LED.';
       }
       st.className='status ok'; st.textContent='Svítilna připravena ✓';
